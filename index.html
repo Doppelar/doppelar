@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>家の在庫管理</title>
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#fff; --text:#1f2937; --muted:#6b7280;
+      --line:#e5e7eb; --shadow:0 8px 24px rgba(0,0,0,.06);
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:16px; background:var(--bg); color:var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    header{
+      max-width:1100px; margin:0 auto 12px;
+      display:flex; gap:12px; align-items:flex-end; justify-content:space-between;
+    }
+    h1{font-size:20px; margin:0}
+    .sub{font-size:12px; color:var(--muted); margin-top:4px}
+    .wrap{max-width:1100px; margin:0 auto; display:grid; grid-template-columns: 360px 1fr; gap:14px;}
+    @media (max-width: 960px){ .wrap{grid-template-columns:1fr;} }
+    .card{
+      background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding:14px;
+    }
+    .row{display:flex; gap:10px; flex-wrap:wrap}
+    label{display:block; font-size:12px; color:var(--muted); margin:8px 0 4px}
+    input, select, textarea{
+      width:100%; padding:10px 10px; border:1px solid var(--line); border-radius:10px;
+      font-size:14px; background:#fff;
+    }
+    textarea{min-height:70px; resize:vertical}
+    .btns{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px}
+    button{
+      border:1px solid var(--line); background:#fff; padding:10px 12px; border-radius:10px;
+      font-weight:600; cursor:pointer;
+    }
+    button.primary{background:#111827; color:#fff; border-color:#111827}
+    button.danger{background:#fee2e2; border-color:#fecaca}
+    button:disabled{opacity:.5; cursor:not-allowed}
+    .toolbar{display:flex; gap:10px; flex-wrap:wrap; align-items:end}
+    .toolbar > div{flex:1; min-width:170px}
+    table{width:100%; border-collapse:collapse}
+    th, td{border-bottom:1px solid var(--line); padding:10px 8px; vertical-align:top}
+    th{font-size:12px; color:var(--muted); text-align:left; font-weight:700}
+    td{font-size:14px}
+    .pill{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:3px 8px; border-radius:999px; font-size:12px; border:1px solid var(--line);
+      color:var(--muted);
+    }
+    .warn{border-color:#f59e0b33; background:#fffbeb; color:#b45309}
+    .bad{border-color:#ef444433; background:#fef2f2; color:#b91c1c}
+    .good{border-color:#10b98133; background:#ecfdf5; color:#047857}
+    .muted{color:var(--muted); font-size:12px}
+    .actions{display:flex; gap:6px; flex-wrap:wrap}
+    .num{font-variant-numeric: tabular-nums;}
+    .small{font-size:12px}
+    .right{margin-left:auto}
+    .kpi{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
+    .kpi .box{
+      flex:1; min-width:160px; border:1px solid var(--line); border-radius:12px; padding:10px;
+      background:#fafafa;
+    }
+    .box .v{font-size:18px; font-weight:800}
+    .box .k{font-size:12px; color:var(--muted)}
+  </style>
+</head>
+
+<body>
+<header>
+  <div>
+    <h1>家の在庫管理</h1>
+    <div class="sub">追加・消費・期限チェック・CSV出力（保存はこの端末内）</div>
+  </div>
+  <div class="muted right" id="saveState">保存: 準備中</div>
+</header>
+
+<div class="wrap">
+  <!-- Left: Form -->
+  <section class="card">
+    <h2 style="font-size:15px; margin:0 0 8px;">登録 / 編集</h2>
+
+    <div class="row">
+      <div style="flex:1; min-width:180px;">
+        <label>品名 *</label>
+        <input id="name" placeholder="例：トイレットペーパー / パスタ / 電池" />
+      </div>
+      <div style="width:140px;">
+        <label>カテゴリ</label>
+        <select id="category">
+          <option value="食材">食材</option>
+          <option value="飲料">飲料</option>
+          <option value="日用品">日用品</option>
+          <option value="衛生">衛生</option>
+          <option value="薬">薬</option>
+          <option value="防災">防災</option>
+          <option value="その他">その他</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div style="width:140px;">
+        <label>数量 *</label>
+        <input id="qty" type="number" min="0" step="1" value="1" class="num" />
+      </div>
+      <div style="width:140px;">
+        <label>単位</label>
+        <input id="unit" placeholder="例：個 / 本 / 袋 / 箱" />
+      </div>
+      <div style="flex:1; min-width:180px;">
+        <label>保管場所</label>
+        <input id="place" placeholder="例：キッチン / 洗面所 / 玄関収納" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div style="flex:1; min-width:180px;">
+        <label>期限（任意）</label>
+        <input id="expiry" type="date" />
+      </div>
+      <div style="width:180px;">
+        <label>最低在庫（任意）</label>
+        <input id="minQty" type="number" min="0" step="1" placeholder="例：2" class="num" />
+      </div>
+    </div>
+
+    <label>メモ</label>
+    <textarea id="memo" placeholder="例：特売で買った / 〇〇メーカー / アレルギー注意 など"></textarea>
+
+    <div class="btns">
+      <button class="primary" id="btnAdd">追加 / 更新</button>
+      <button id="btnClear">クリア</button>
+      <button class="danger" id="btnDelete" disabled>選択品を削除</button>
+    </div>
+
+    <div class="kpi">
+      <div class="box">
+        <div class="v num" id="kpiTotal">0</div>
+        <div class="k">アイテム数</div>
+      </div>
+      <div class="box">
+        <div class="v num" id="kpiLow">0</div>
+        <div class="k">在庫少（最低在庫以下）</div>
+      </div>
+      <div class="box">
+        <div class="v num" id="kpiSoon">0</div>
+        <div class="k">期限7日以内</div>
+      </div>
+    </div>
+
+    <hr style="border:none; border-top:1px solid var(--line); margin:14px 0;">
+
+    <h3 style="font-size:13px; margin:0 0 8px;">バックアップ</h3>
+    <div class="btns">
+      <button id="btnExportCsv">CSV出力</button>
+      <button id="btnExportJson">JSON出力</button>
+      <button id="btnImportJson">JSON取込</button>
+      <button class="danger" id="btnReset">全削除</button>
+      <input id="fileInput" type="file" accept="application/json" style="display:none;" />
+    </div>
+    <div class="muted small" style="margin-top:8px;">
+      JSON出力→他PCへ移行できます。CSVはExcelで開けます。
+    </div>
+  </section>
+
+  <!-- Right: List -->
+  <section class="card">
+    <div class="toolbar">
+      <div>
+        <label>検索</label>
+        <input id="q" placeholder="品名/メモ/場所で検索" />
+      </div>
+      <div>
+        <label>カテゴリ</label>
+        <select id="fCategory">
+          <option value="">すべて</option>
+          <option value="食材">食材</option>
+          <option value="飲料">飲料</option>
+          <option value="日用品">日用品</option>
+          <option value="衛生">衛生</option>
+          <option value="薬">薬</option>
+          <option value="防災">防災</option>
+          <option value="その他">その他</option>
+        </select>
+      </div>
+      <div>
+        <label>表示</label>
+        <select id="fStatus">
+          <option value="">すべて</option>
+          <option value="low">在庫少</option>
+          <option value="soon">期限7日以内</option>
+          <option value="expired">期限切れ</option>
+        </select>
+      </div>
+      <div>
+        <label>並び替え</label>
+        <select id="sortBy">
+          <option value="updated_desc">更新日（新→旧）</option>
+          <option value="name_asc">品名（A→Z）</option>
+          <option value="qty_asc">数量（少→多）</option>
+          <option value="expiry_asc">期限（近→遠）</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-top:12px; overflow:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th style="min-width:180px;">品名</th>
+            <th style="min-width:120px;">カテゴリ / 場所</th>
+            <th style="min-width:150px;">数量</th>
+            <th style="min-width:140px;">期限</th>
+            <th style="min-width:180px;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="muted" style="margin-top:10px;">
+      行を「編集」で左のフォームに読み込み → 追加/更新 で上書きできます。
+    </div>
+  </section>
+</div>
+
+<script>
+  // ====== storage ======
+  const KEY = "home_inventory_v1";
+  const state = {
+    items: [],
+    selectedId: null,
+    lastSavedAt: null,
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const saveStateEl = $("saveState");
+
+  function uid() {
+    return Math.random().toString(16).slice(2) + Date.now().toString(16);
+  }
+
+  function todayISO() {
+    const d = new Date();
+    const z = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`;
+  }
+
+  function parseDateISO(s){
+    if(!s) return null;
+    const d = new Date(s + "T00:00:00");
+    return isNaN(d) ? null : d;
+  }
+
+  function daysDiff(a, b){ // b - a in days
+    const ms = 24*60*60*1000;
+    return Math.floor((b - a) / ms);
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) {
+        const data = JSON.parse(raw);
+        if (Array.isArray(data.items)) state.items = data.items;
+      }
+    } catch(e) {
+      console.warn(e);
+    }
+    render();
+    setSaved("読込完了");
+  }
+
+  function persist() {
+    const payload = { items: state.items };
+    localStorage.setItem(KEY, JSON.stringify(payload));
+    state.lastSavedAt = new Date();
+    setSaved("保存しました");
+  }
+
+  let saveTimer = null;
+  function persistDebounced(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(persist, 250);
+    setSaved("保存中…");
+  }
+
+  function setSaved(msg){
+    const t = state.lastSavedAt ? ` / 最終: ${state.lastSavedAt.toLocaleString()}` : "";
+    saveStateEl.textContent = `保存: ${msg}${t}`;
+  }
+
+  // ====== CRUD ======
+  function readForm(){
+    const name = $("name").value.trim();
+    const category = $("category").value;
+    const qty = Number($("qty").value);
+    const unit = $("unit").value.trim();
+    const place = $("place").value.trim();
+    const expiry = $("expiry").value; // ISO or ""
+    const minQtyRaw = $("minQty").value;
+    const minQty = minQtyRaw === "" ? null : Number(minQtyRaw);
+    const memo = $("memo").value.trim();
+
+    return { name, category, qty, unit, place, expiry, minQty, memo };
+  }
+
+  function validate(item){
+    if(!item.name) return "品名は必須です。";
+    if(!Number.isFinite(item.qty) || item.qty < 0) return "数量は0以上の数値にしてください。";
+    if(item.minQty !== null && (!Number.isFinite(item.minQty) || item.minQty < 0)) return "最低在庫は0以上の数値にしてください。";
+    return null;
+  }
+
+  function clearForm(){
+    $("name").value = "";
+    $("category").value = "食材";
+    $("qty").value = 1;
+    $("unit").value = "";
+    $("place").value = "";
+    $("expiry").value = "";
+    $("minQty").value = "";
+    $("memo").value = "";
+    state.selectedId = null;
+    $("btnDelete").disabled = true;
+  }
+
+  function upsert(){
+    const item = readForm();
+    const err = validate(item);
+    if(err){ alert(err); return; }
+
+    const now = new Date().toISOString();
+    if(state.selectedId){
+      const idx = state.items.findIndex(x => x.id === state.selectedId);
+      if(idx >= 0){
+        state.items[idx] = {
+          ...state.items[idx],
+          ...item,
+          updatedAt: now,
+        };
+      }
+    }else{
+      state.items.push({
+        id: uid(),
+        ...item,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+    persistDebounced();
+    clearForm();
+    render();
+  }
+
+  function selectForEdit(id){
+    const x = state.items.find(i => i.id === id);
+    if(!x) return;
+    state.selectedId = id;
+    $("name").value = x.name ?? "";
+    $("category").value = x.category ?? "その他";
+    $("qty").value = x.qty ?? 0;
+    $("unit").value = x.unit ?? "";
+    $("place").value = x.place ?? "";
+    $("expiry").value = x.expiry ?? "";
+    $("minQty").value = (x.minQty ?? x.minQty === 0) ? x.minQty : "";
+    $("memo").value = x.memo ?? "";
+    $("btnDelete").disabled = false;
+    window.scrollTo({top:0, behavior:"smooth"});
+  }
+
+  function removeSelected(){
+    if(!state.selectedId) return;
+    const x = state.items.find(i => i.id === state.selectedId);
+    if(!x) return;
+    if(!confirm(`削除しますか？\n\n${x.name}`)) return;
+    state.items = state.items.filter(i => i.id !== state.selectedId);
+    persistDebounced();
+    clearForm();
+    render();
+  }
+
+  function consume(id, amount){
+    const idx = state.items.findIndex(i => i.id === id);
+    if(idx < 0) return;
+    const x = state.items[idx];
+    const newQty = Math.max(0, Number(x.qty || 0) - amount);
+    state.items[idx] = { ...x, qty: newQty, updatedAt: new Date().toISOString() };
+    persistDebounced();
+    render();
+  }
+
+  // ====== filtering / sorting / status ======
+  function getStatus(x){
+    const now = new Date();
+    const expiry = parseDateISO(x.expiry);
+    const minQty = (x.minQty ?? null);
+    const low = (minQty !== null) && Number(x.qty) <= Number(minQty);
+    let exp = "none";
+    if(expiry){
+      const d = daysDiff(now, expiry); // expiry - now
+      if(d < 0) exp = "expired";
+      else if(d <= 7) exp = "soon";
+      else exp = "ok";
+    }
+    return { low, exp };
+  }
+
+  function matches(x){
+    const q = $("q").value.trim().toLowerCase();
+    const fc = $("fCategory").value;
+    const fs = $("fStatus").value;
+
+    if(fc && x.category !== fc) return false;
+
+    if(q){
+      const hay = `${x.name||""} ${x.memo||""} ${x.place||""}`.toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+
+    if(fs){
+      const st = getStatus(x);
+      if(fs === "low" && !st.low) return false;
+      if(fs === "soon" && st.exp !== "soon") return false;
+      if(fs === "expired" && st.exp !== "expired") return false;
+    }
+    return true;
+  }
+
+  function sortItems(items){
+    const s = $("sortBy").value;
+    const copy = [...items];
+    const byName = (a,b)=> String(a.name||"").localeCompare(String(b.name||""), "ja");
+    const byQty = (a,b)=> Number(a.qty||0) - Number(b.qty||0);
+    const byUpdatedDesc = (a,b)=> String(b.updatedAt||"").localeCompare(String(a.updatedAt||""));
+    const byExpiryAsc = (a,b)=>{
+      const ad = parseDateISO(a.expiry); const bd = parseDateISO(b.expiry);
+      if(!ad && !bd) return 0;
+      if(!ad) return 1;
+      if(!bd) return -1;
+      return ad - bd;
+    };
+    if(s === "name_asc") copy.sort(byName);
+    else if(s === "qty_asc") copy.sort(byQty);
+    else if(s === "expiry_asc") copy.sort(byExpiryAsc);
+    else copy.sort(byUpdatedDesc);
+    return copy;
+  }
+
+  // ====== render ======
+  function badgeFor(x){
+    const st = getStatus(x);
+    const now = new Date();
+    const expiry = parseDateISO(x.expiry);
+    let parts = [];
+    if(st.low) parts.push({text:"在庫少", cls:"bad"});
+    if(expiry){
+      const d = daysDiff(now, expiry);
+      if(d < 0) parts.push({text:`期限切れ(${Math.abs(d)}日)`, cls:"bad"});
+      else if(d <= 7) parts.push({text:`期限あと${d}日`, cls:"warn"});
+      else parts.push({text:`期限まで${d}日`, cls:"good"});
+    }
+    return parts;
+  }
+
+  function render(){
+    const tbody = $("tbody");
+    tbody.innerHTML = "";
+
+    const filtered = sortItems(state.items.filter(matches));
+
+    for(const x of filtered){
+      const st = getStatus(x);
+      const expiry = x.expiry ? x.expiry : "—";
+      const unit = x.unit ? ` ${x.unit}` : "";
+      const place = x.place ? x.place : "—";
+
+      const badges = badgeFor(x).map(b => `<span class="pill ${b.cls}">${b.text}</span>`).join(" ");
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>
+          <div style="font-weight:800;">${escapeHtml(x.name||"")}</div>
+          <div class="small muted">${escapeHtml(x.memo||"")}</div>
+          <div style="margin-top:6px;">${badges || `<span class="pill">OK</span>`}</div>
+        </td>
+        <td>
+          <div><span class="pill">${escapeHtml(x.category||"")}</span></div>
+          <div class="small muted" style="margin-top:6px;">${escapeHtml(place)}</div>
+        </td>
+        <td class="num">
+          <div style="font-weight:800;">${Number(x.qty||0)}${escapeHtml(unit)}</div>
+          <div class="small muted">最低在庫：${(x.minQty ?? x.minQty===0) ? Number(x.minQty) : "—"}</div>
+        </td>
+        <td class="num">
+          <div style="font-weight:800;">${escapeHtml(expiry)}</div>
+          <div class="small muted">更新：${escapeHtml((x.updatedAt||"").slice(0,10))}</div>
+        </td>
+        <td>
+          <div class="actions">
+            <button onclick="selectForEdit('${x.id}')">編集</button>
+            <button onclick="consume('${x.id}', 1)">-1</button>
+            <button onclick="consume('${x.id}', 5)">-5</button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    // KPI
+    $("kpiTotal").textContent = state.items.length;
+
+    let low = 0, soon = 0;
+    const now = new Date();
+    for(const x of state.items){
+      const st = getStatus(x);
+      if(st.low) low++;
+      if(x.expiry){
+        const d = daysDiff(now, parseDateISO(x.expiry));
+        if(d >= 0 && d <= 7) soon++;
+      }
+    }
+    $("kpiLow").textContent = low;
+    $("kpiSoon").textContent = soon;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, (m)=>({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[m]));
+  }
+
+  // ====== export/import ======
+  function exportCsv(){
+    const cols = ["name","category","qty","unit","place","expiry","minQty","memo","createdAt","updatedAt","id"];
+    const lines = [cols.join(",")];
+    for(const x of state.items){
+      const row = cols.map(k => csvCell(x[k]));
+      lines.push(row.join(","));
+    }
+    const blob = new Blob([lines.join("\n")], {type:"text/csv;charset=utf-8"});
+    downloadBlob(blob, `home_inventory_${todayISO()}.csv`);
+  }
+
+  function csvCell(v){
+    if(v === null || v === undefined) return "";
+    const s = String(v);
+    if(/[,"\n]/.test(s)) return `"${s.replace(/"/g,'""')}"`;
+    return s;
+  }
+
+  function exportJson(){
+    const blob = new Blob([JSON.stringify({items: state.items}, null, 2)], {type:"application/json"});
+    downloadBlob(blob, `home_inventory_${todayISO()}.json`);
+  }
+
+  function importJsonFile(file){
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const data = JSON.parse(reader.result);
+        if(!data || !Array.isArray(data.items)) throw new Error("items配列がありません");
+        // 軽い整形
+        state.items = data.items.map(x => ({
+          id: x.id || uid(),
+          name: x.name || "",
+          category: x.category || "その他",
+          qty: Number.isFinite(Number(x.qty)) ? Number(x.qty) : 0,
+          unit: x.unit || "",
+          place: x.place || "",
+          expiry: x.expiry || "",
+          minQty: (x.minQty === null || x.minQty === undefined || x.minQty === "") ? null : Number(x.minQty),
+          memo: x.memo || "",
+          createdAt: x.createdAt || new Date().toISOString(),
+          updatedAt: x.updatedAt || new Date().toISOString(),
+        }));
+        persistDebounced();
+        clearForm();
+        render();
+        alert("JSONを取り込みました。");
+      }catch(e){
+        alert("JSON取込に失敗: " + e.message);
+      }
+    };
+    reader.readAsText(file, "utf-8");
+  }
+
+  function downloadBlob(blob, filename){
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 0);
+  }
+
+  function resetAll(){
+    if(!confirm("全データを削除します。よろしいですか？")) return;
+    state.items = [];
+    state.selectedId = null;
+    localStorage.removeItem(KEY);
+    clearForm();
+    render();
+    setSaved("全削除しました");
+  }
+
+  // ====== events ======
+  $("btnAdd").addEventListener("click", upsert);
+  $("btnClear").addEventListener("click", clearForm);
+  $("btnDelete").addEventListener("click", removeSelected);
+
+  ["q","fCategory","fStatus","sortBy"].forEach(id => $(id).addEventListener("input", render));
+  $("fCategory").addEventListener("change", render);
+  $("fStatus").addEventListener("change", render);
+  $("sortBy").addEventListener("change", render);
+
+  $("btnExportCsv").addEventListener("click", exportCsv);
+  $("btnExportJson").addEventListener("click", exportJson);
+
+  $("btnImportJson").addEventListener("click", () => $("fileInput").click());
+  $("fileInput").addEventListener("change", (e) => {
+    const f = e.target.files && e.target.files[0];
+    if(f) importJsonFile(f);
+    e.target.value = "";
+  });
+
+  $("btnReset").addEventListener("click", resetAll);
+
+  // start
+  load();
+</script>
+</body>
+</html>
